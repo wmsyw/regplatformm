@@ -29,9 +29,9 @@
         <span class="text-t-muted text-xs">正在连接...</span>
       </div>
 
-      <!-- 日志条目 -->
+      <!-- 日志条目（只显示重要日志：完成、成功、失败，隐藏排队/重复/中间过程） -->
       <template v-else>
-        <div v-for="(line, i) in logs" :key="i"
+        <div v-for="(line, i) in filteredLogs" :key="i"
           class="animate-in px-1.5 py-0.5 text-[10px] font-mono leading-4 rounded flex items-start gap-1.5"
           :class="logClass(line)">
           <span class="flex-shrink-0 w-3 text-center">{{ logIcon(line) }}</span>
@@ -132,6 +132,24 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { useDashboard } from '../../composables/useDashboard'
 
 const { isRunning, isQueued, logs, logPanel, taskStatus, lastLogAt, elapsedSeconds, recentCompletions } = useDashboard()
+
+// 过滤日志：只显示重要信息（完成、成功、失败），隐藏排队/重复/中间过程噪音
+const filteredLogs = computed(() =>
+  logs.value.filter((line: string) => {
+    // 始终显示：任务完成、注册成功、token 成功、失败
+    if (line.includes('[✓]') || line.includes('[OK]') || line.includes('任务完成')) return true
+    if (line.includes('注册成功') || line.includes('注册完成') || line.includes('Token 获取成功')) return true
+    if (line.includes('[-]') || line.includes('失败')) return true
+    if (line.includes('[!]')) return true
+    if (line.includes('════')) return true
+    // 隐藏：排队、重复、等待、进度中间过程
+    if (line.includes('排队') || line.includes('重复') || line.includes('↑ 重复')) return false
+    if (line.includes('处理中') && line.includes('节点')) return false
+    if (line.includes('[~]')) return false
+    // 其他日志默认显示
+    return true
+  })
+)
 
 // ── 全站动态：平台样式 & 相对时间 ──
 
